@@ -52,7 +52,8 @@ class KITTI(data.Dataset):
         self.image_dir = os.path.join(self.data_dir, 'image_2')
         self.depth_dir = os.path.join(self.data_dir, 'depth')
         self.calib_dir = os.path.join(self.data_dir, 'calib')
-        self.label_dir = os.path.join(self.data_dir, 'label_2')
+        # self.label_dir = os.path.join(self.data_dir, 'label_2')
+        self.label_dir = os.path.join(self.data_dir, 'label_2_new')
 
         # data augmentation configuration
         self.data_augmentation = True if split in ['train', 'trainval'] else False
@@ -84,6 +85,20 @@ class KITTI(data.Dataset):
         assert os.path.exists(calib_file)
         return Calibration(calib_file)
 
+    def cal_theta_ray(self,box_2d,proj_metric): #new add 
+        width=1242 #maybe can improve
+        #width=1280
+        fovx = 2 * np.arctan(width / (2 * proj_metric[0][0]))
+        center = (box_2d[0] + box_2d[2]) / 2
+        dx = center - (width / 2)
+        mult = 1
+        if dx < 0:
+            mult = -1
+        dx = abs(dx)
+        angle = np.arctan( (2*dx*np.tan(fovx/2)) / width )
+        angle = angle * mult
+
+        return angle
 
     def __len__(self):
         return self.idx_list.__len__()
@@ -133,8 +148,12 @@ class KITTI(data.Dataset):
                 for object in objects:
                     [x1, _, x2, _] = object.box2d
                     object.box2d[0],  object.box2d[2] = img_size[0] - x2, img_size[0] - x1
+                    object.alpha = np.pi - object.alpha #new add 
                     object.ry = np.pi - object.ry
                     object.pos[0] *= -1
+                    #這邊感覺alpha 的還沒constraint
+                    if object.alpha > np.pi:  object.alpha -= 2 * np.pi  # new add  
+                    if object.alpha < -np.pi: object.alpha += 2 * np.pi  # new add
                     if object.ry > np.pi:  object.ry -= 2 * np.pi
                     if object.ry < -np.pi: object.ry += 2 * np.pi
             # labels encoding
@@ -152,6 +171,8 @@ class KITTI(data.Dataset):
             indices = np.zeros((self.max_objs), dtype=np.int64)
             mask_2d = np.zeros((self.max_objs), dtype=np.uint8)
             mask_3d = np.zeros((self.max_objs), dtype=np.uint8)
+            group_mask=np.zeros((self.max_objs),dtype=np.uint8)#new add
+            theta_ray=np.zeros((self.max_objs),dtype=np.float32) #new add
             object_num = len(objects) if len(objects) < self.max_objs else self.max_objs
             for i in range(object_num):
                 # filter objects by writelist
@@ -206,21 +227,24 @@ class KITTI(data.Dataset):
                 depth[i] = objects[i].pos[-1]
     
                 # encoding heading angle
-                #heading_angle = objects[i].alpha
-                heading_angle = calib.ry2alpha(objects[i].ry, (objects[i].box2d[0]+objects[i].box2d[2])/2)
-                if heading_angle > np.pi:  heading_angle -= 2 * np.pi  # check range
-                if heading_angle < -np.pi: heading_angle += 2 * np.pi
+                heading_angle = objects[i].alpha
+                # heading_angle = calib.ry2alpha(objects[i].ry, (objects[i].box2d[0]+objects[i].box2d[2])/2) origin
+                # if heading_angle > np.pi:  heading_angle -= 2 * np.pi  # check range
+                # if heading_angle < -np.pi: heading_angle += 2 * np.pi
                 heading_bin[i], heading_res[i] = angle2class(heading_angle)
+
+                cal_angle=self.cal_theta_ray(objects[i].box2d,calib.P2) #new add 
+                theta_ray[i]=cal_angle #new add 
     
                 # encoding 3d offset & size_3d
                 offset_3d[i] = center_3d - center_heatmap
                 src_size_3d[i] = np.array([objects[i].h, objects[i].w, objects[i].l], dtype=np.float32)
                 mean_size = self.cls_mean_size[self.cls2id[objects[i].cls_type]]
                 size_3d[i] = src_size_3d[i] - mean_size
-
+                group_mask[i]=objects[i].group
                 #objects[i].trucation <=0.5 and objects[i].occlusion<=2 and (objects[i].box2d[3]-objects[i].box2d[1])>=25:
                 if objects[i].trucation <=0.5 and objects[i].occlusion<=2:    
-                    mask_2d[i] = 1           
+                    mask_2d[i] = 1
             targets = {'depth': depth,
                    'size_2d': size_2d,
                    'heatmap': heatmap,
@@ -231,7 +255,9 @@ class KITTI(data.Dataset):
                    'heading_bin': heading_bin,
                    'heading_res': heading_res,
                    'cls_ids': cls_ids,
-                   'mask_2d': mask_2d} 
+                   'mask_2d': mask_2d,
+                   'theta_ray':theta_ray,
+                   'group':group_mask} 
         else:
             targets = {}
         # collect return data

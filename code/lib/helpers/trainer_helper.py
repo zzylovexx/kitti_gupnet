@@ -12,6 +12,8 @@ from lib.losses.loss_function import GupnetLoss,Hierarchical_Task_Learning
 from lib.helpers.decode_helper import extract_dets_from_outputs
 from lib.helpers.decode_helper import decode_detections
 
+from torch.utils.tensorboard import SummaryWriter
+
 class Trainer(object):
     def __init__(self,
                  cfg,
@@ -34,6 +36,7 @@ class Trainer(object):
         self.epoch = 0
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.class_name = test_loader.dataset.class_name
+        self.writer= SummaryWriter()
         
         if self.cfg_train.get('resume_model', None):
             assert os.path.exists(self.cfg_train['resume_model'])
@@ -64,6 +67,17 @@ class Trainer(object):
                 log_str += ' %s:%.4f,' %(key[:-4], loss_weights[key])   
             self.logger.info(log_str)                     
             ei_loss = self.train_one_epoch(loss_weights)
+
+            self.writer.add_scalar('loss/total_loss',ei_loss['total_loss'],epoch)
+            self.writer.add_scalar('loss/seg_loss',ei_loss['seg_loss'],epoch)
+            self.writer.add_scalar('loss/offset2d_loss',ei_loss['offset2d_loss'],epoch)
+            self.writer.add_scalar('loss/size_loss',ei_loss['size2d_loss'],epoch)
+            self.writer.add_scalar('loss/offset3d_loss',ei_loss['offset3d_loss'],epoch)
+            self.writer.add_scalar('loss/depth_loss',ei_loss['depth_loss'],epoch)
+            self.writer.add_scalar('loss/size3d_loss',ei_loss['size3d_loss'],epoch)
+            self.writer.add_scalar('loss/heading_loss',ei_loss['heading_loss'],epoch)
+            # self.writer.add_scalar('loss/heading_reg_loss',ei_loss['heading_reg'],epoch)
+            self.writer.add_scalar('loss/group_loss',ei_loss['group_loss'],epoch)
             self.epoch += 1
             
             # update learning rate
@@ -78,8 +92,8 @@ class Trainer(object):
 
             # save trained model
             if (self.epoch % self.cfg_train['save_frequency']) == 0:
-                os.makedirs(self.cfg_train['log_dir']+'/checkpoints', exist_ok=True)
-                ckpt_name = os.path.join(self.cfg_train['log_dir']+'/checkpoints', 'checkpoint_epoch_%d' % self.epoch)
+                os.makedirs(self.cfg_train['log_dir']+'/checkpointsgroup1', exist_ok=True)
+                ckpt_name = os.path.join(self.cfg_train['log_dir']+'/checkpointsgroup1', 'checkpoint_epoch_%d' % self.epoch)
                 save_checkpoint(get_checkpoint_state(self.model, self.optimizer, self.epoch), ckpt_name, self.logger)
 
         return None
@@ -126,7 +140,17 @@ class Trainer(object):
             criterion = GupnetLoss(self.epoch)
             outputs = self.model(inputs,coord_ranges,calibs,targets)
             total_loss, loss_terms = criterion(outputs, targets)
-            
+
+            self.writer.add_scalar('batch/total_loss',loss_terms['total_loss'],batch_idx)
+            self.writer.add_scalar('batch/seg_loss',loss_terms['seg_loss'],batch_idx)
+            self.writer.add_scalar('batch/offset2d_loss',loss_terms['offset2d_loss'],batch_idx)
+            self.writer.add_scalar('batch/size_loss',loss_terms['size2d_loss'],batch_idx)
+            self.writer.add_scalar('batch/offset3d_loss',loss_terms['offset3d_loss'],batch_idx)
+            self.writer.add_scalar('batch/depth_loss',loss_terms['depth_loss'],batch_idx)
+            self.writer.add_scalar('batch/size3d_loss',loss_terms['size3d_loss'],batch_idx)
+            self.writer.add_scalar('batch/heading_loss',loss_terms['heading_loss'],batch_idx)
+            self.writer.add_scalar('batch/group_loss',loss_terms['group_loss'],batch_idx)
+
             if loss_weights is not None:
                 total_loss = torch.zeros(1).cuda()
                 for key in loss_weights.keys():
@@ -141,10 +165,10 @@ class Trainer(object):
                 if key not in stat_dict.keys():
                     stat_dict[key] = 0
                 stat_dict[key] += loss_terms[key] 
-            for key in loss_terms.keys():
-                if key not in disp_dict.keys():
-                    disp_dict[key] = 0
-                disp_dict[key] += loss_terms[key]   
+            # for key in loss_terms.keys():
+            #     if key not in disp_dict.keys():
+            #         disp_dict[key] = 0
+            #     disp_dict[key] += loss_terms[key]   
             # display statistics in terminal
             if trained_batch % self.cfg_train['disp_frequency'] == 0:
                 log_str = 'BATCH[%04d/%04d]' % (trained_batch, len(self.train_loader))
@@ -191,7 +215,7 @@ class Trainer(object):
         self.save_results(results)
            
                 
-    def save_results(self, results, output_dir='./outputs'):
+    def save_results(self, results, output_dir='./outputsgroup1'):
         output_dir = os.path.join(output_dir, 'data')
         os.makedirs(output_dir, exist_ok=True)
 

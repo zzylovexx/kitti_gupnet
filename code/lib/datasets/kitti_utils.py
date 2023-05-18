@@ -26,6 +26,7 @@ class Object3d(object):
         self.dis_to_cam = np.linalg.norm(self.pos)
         self.ry = float(label[14])
         self.score = float(label[15]) if label.__len__() == 16 else -1.0
+        self.group=int(label[16])
         self.level_str = None
         self.level = self.get_obj_level()
 

@@ -60,7 +60,7 @@ class Tester(object):
         self.save_results(results)
         progress_bar.close()
 
-    def save_results(self, results, output_dir='./outputs'):
+    def save_results(self, results, output_dir='./outputsgroup2'):
         output_dir = os.path.join(output_dir, 'data')
         os.makedirs(output_dir, exist_ok=True)
         for img_id in results.keys():
@@ -73,6 +73,7 @@ class Tester(object):
                     f.write(' {:.2f}'.format(results[img_id][i][j]))
                 f.write('\n')
             f.close()
+        print(f'save in {output_dir}')
 
 
 
