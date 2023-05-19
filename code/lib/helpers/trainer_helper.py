@@ -68,16 +68,16 @@ class Trainer(object):
             self.logger.info(log_str)                     
             ei_loss = self.train_one_epoch(loss_weights)
 
-            self.writer.add_scalar('loss/total_loss',ei_loss['total_loss'],epoch)
-            self.writer.add_scalar('loss/seg_loss',ei_loss['seg_loss'],epoch)
-            self.writer.add_scalar('loss/offset2d_loss',ei_loss['offset2d_loss'],epoch)
-            self.writer.add_scalar('loss/size_loss',ei_loss['size2d_loss'],epoch)
-            self.writer.add_scalar('loss/offset3d_loss',ei_loss['offset3d_loss'],epoch)
-            self.writer.add_scalar('loss/depth_loss',ei_loss['depth_loss'],epoch)
-            self.writer.add_scalar('loss/size3d_loss',ei_loss['size3d_loss'],epoch)
-            self.writer.add_scalar('loss/heading_loss',ei_loss['heading_loss'],epoch)
+            self.writer.add_scalar('loss/total_loss',ei_loss['total_loss'].item(),epoch)
+            self.writer.add_scalar('loss/seg_loss',ei_loss['seg_loss'].item(),epoch)
+            self.writer.add_scalar('loss/offset2d_loss',ei_loss['offset2d_loss'].item(),epoch)
+            self.writer.add_scalar('loss/size_loss',ei_loss['size2d_loss'].item(),epoch)
+            self.writer.add_scalar('loss/offset3d_loss',ei_loss['offset3d_loss'].item(),epoch)
+            self.writer.add_scalar('loss/depth_loss',ei_loss['depth_loss'].item(),epoch)
+            self.writer.add_scalar('loss/size3d_loss',ei_loss['size3d_loss'].item(),epoch)
+            self.writer.add_scalar('loss/heading_loss',ei_loss['heading_loss'].item(),epoch)
             # self.writer.add_scalar('loss/heading_reg_loss',ei_loss['heading_reg'],epoch)
-            self.writer.add_scalar('loss/group_loss',ei_loss['group_loss'],epoch)
+            self.writer.add_scalar('loss/group_loss',ei_loss['group_loss'].item(),epoch)
             self.epoch += 1
             
             # update learning rate
@@ -140,16 +140,6 @@ class Trainer(object):
             criterion = GupnetLoss(self.epoch)
             outputs = self.model(inputs,coord_ranges,calibs,targets)
             total_loss, loss_terms = criterion(outputs, targets)
-
-            self.writer.add_scalar('batch/total_loss',loss_terms['total_loss'],batch_idx)
-            self.writer.add_scalar('batch/seg_loss',loss_terms['seg_loss'],batch_idx)
-            self.writer.add_scalar('batch/offset2d_loss',loss_terms['offset2d_loss'],batch_idx)
-            self.writer.add_scalar('batch/size_loss',loss_terms['size2d_loss'],batch_idx)
-            self.writer.add_scalar('batch/offset3d_loss',loss_terms['offset3d_loss'],batch_idx)
-            self.writer.add_scalar('batch/depth_loss',loss_terms['depth_loss'],batch_idx)
-            self.writer.add_scalar('batch/size3d_loss',loss_terms['size3d_loss'],batch_idx)
-            self.writer.add_scalar('batch/heading_loss',loss_terms['heading_loss'],batch_idx)
-            self.writer.add_scalar('batch/group_loss',loss_terms['group_loss'],batch_idx)
 
             if loss_weights is not None:
                 total_loss = torch.zeros(1).cuda()
