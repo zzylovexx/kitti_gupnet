@@ -67,6 +67,10 @@ class GUPNet(nn.Module):
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(self.head_conv, 2, kernel_size=1, stride=1, padding=0, bias=True))
 
+        self.heading = nn.Sequential(nn.Conv2d(channels[self.first_level], self.head_conv, kernel_size=3, padding=1, bias=True),
+                                     nn.ReLU(inplace=True),
+                                     nn.Conv2d(self.head_conv, 24, kernel_size=1, stride=1, padding=0, bias=True))
+        
 
         self.depth = nn.Sequential(nn.Conv2d(channels[self.first_level]+2+self.cls_num, self.head_conv, kernel_size=3, padding=1, bias=True),
                                      nn.BatchNorm2d(self.head_conv),
@@ -80,10 +84,10 @@ class GUPNet(nn.Module):
                                      nn.BatchNorm2d(self.head_conv),
                                      nn.ReLU(inplace=True),nn.AdaptiveAvgPool2d(1),
                                      nn.Conv2d(self.head_conv, 4, kernel_size=1, stride=1, padding=0, bias=True))
-        self.heading = nn.Sequential(nn.Conv2d(channels[self.first_level]+2+self.cls_num, self.head_conv, kernel_size=3, padding=1, bias=True),
-                                     nn.BatchNorm2d(self.head_conv),
-                                     nn.ReLU(inplace=True),nn.AdaptiveAvgPool2d(1),
-                                     nn.Conv2d(self.head_conv, 24, kernel_size=1, stride=1, padding=0, bias=True))
+        # self.heading = nn.Sequential(nn.Conv2d(channels[self.first_level]+2+self.cls_num, self.head_conv, kernel_size=3, padding=1, bias=True),
+        #                              nn.BatchNorm2d(self.head_conv),
+        #                              nn.ReLU(inplace=True),nn.AdaptiveAvgPool2d(1),
+        #                              nn.Conv2d(self.head_conv, 24, kernel_size=1, stride=1, padding=0, bias=True))
         # init layers
         self.heatmap[-1].bias.data.fill_(-2.19)
         self.fill_fc_weights(self.offset_2d)
@@ -110,6 +114,7 @@ class GUPNet(nn.Module):
         ret['heatmap']=self.heatmap(feat)
         ret['offset_2d']=self.offset_2d(feat)
         ret['size_2d']=self.size_2d(feat)
+        ret['heading'] = self.heading(feat)
         #two stage
         assert(mode in ['train','val','test'])
         if mode=='train':   #extract train structure in the train (only) and the val mode
@@ -173,7 +178,7 @@ class GUPNet(nn.Module):
 
 
             res['train_tag'] = torch.ones(num_masked_bin).type(torch.bool).to(device_id)
-            res['heading'] = self.heading(roi_feature_masked)[:,:,0,0]
+            # res['heading'] = self.heading(roi_feature_masked)[:,:,0,0]
             res['depth'] = depth_net_out
             res['offset_3d'] = self.offset_3d(roi_feature_masked)[:,:,0,0]
             res['size_3d']= size3d_offset

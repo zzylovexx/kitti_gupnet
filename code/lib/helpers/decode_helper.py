@@ -55,10 +55,10 @@ def extract_dets_from_outputs(outputs, K=50):
     heatmap = outputs['heatmap']
     size_2d = outputs['size_2d']
     offset_2d = outputs['offset_2d']    
-    
+    heading = outputs['heading']
     batch, channel, height, width = heatmap.size() # get shape
     
-    heading = outputs['heading'].view(batch,K,-1)
+    # heading = outputs['heading'].view(batch,K,-1)
     depth = outputs['depth'].view(batch,K,-1)[:,:,0:1]
     size_3d = outputs['size_3d'].view(batch,K,-1)
     offset_3d = outputs['offset_3d'].view(batch,K,-1)
@@ -78,9 +78,9 @@ def extract_dets_from_outputs(outputs, K=50):
     ys3d = ys.view(batch, K, 1) + offset_3d[:, :, 1:2]
 
     cls_ids = cls_ids.view(batch, K, 1).float()
-    depth_score = (-(0.5*outputs['depth'].view(batch,K,-1)[:,:,1:2]).exp()).exp()
-    scores = scores.view(batch, K, 1)*depth_score
-
+    # depth_score = (-(0.5*outputs['depth'].view(batch,K,-1)[:,:,1:2]).exp()).exp()
+    # scores = scores.view(batch, K, 1)*depth_score
+    scores = scores.view(batch, K, 1)
     # check shape
     xs2d = xs2d.view(batch, K, 1)
     ys2d = ys2d.view(batch, K, 1)
@@ -89,6 +89,9 @@ def extract_dets_from_outputs(outputs, K=50):
 
     size_2d = _transpose_and_gather_feat(size_2d, inds)
     size_2d = size_2d.view(batch, K, 2)
+
+    heading=_transpose_and_gather_feat(heading,inds)
+    heading=heading.view(batch,K,-1)
 
     detections = torch.cat([cls_ids, scores, xs2d, ys2d, size_2d, depth, heading, size_3d, xs3d, ys3d], dim=2)
 

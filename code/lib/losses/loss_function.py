@@ -65,9 +65,15 @@ class GupnetLoss(nn.Module):
         seg_loss = self.compute_segmentation_loss(preds, targets)
         bbox2d_loss = self.compute_bbox2d_loss(preds, targets)
         bbox3d_loss = self.compute_bbox3d_loss(preds, targets)
+
+        heading_loss,grouploss = compute_heading_loss(preds['heading'], targets['indices'],targets['mask_2d'],targets['heading_bin'],targets['heading_res'],targets['theta_ray'],targets['group'])
+
+        loss = seg_loss + bbox2d_loss + bbox3d_loss+heading_loss + 2*grouploss
+        self.stat['heading_loss']=heading_loss
+        self.stat['group_loss']=grouploss
+       
         
-        loss = seg_loss + bbox2d_loss + bbox3d_loss
-        self.stat['total_loss']=loss
+        # self.stat['total_loss']=loss
         return loss, self.stat
 
 
@@ -87,8 +93,9 @@ class GupnetLoss(nn.Module):
         # compute offset2d loss
         offset2d_input = extract_input_from_tensor(input['offset_2d'], target['indices'], target['mask_2d'])
         offset2d_target = extract_target_from_tensor(target['offset_2d'], target['mask_2d'])
+        
         offset2d_loss = F.l1_loss(offset2d_input, offset2d_target, reduction='mean')
-
+         
 
         loss = offset2d_loss + size2d_loss   
         self.stat['offset2d_loss'] = offset2d_loss
@@ -119,19 +126,23 @@ class GupnetLoss(nn.Module):
         #size3d_loss = F.l1_loss(size3d_input[:,1:], size3d_target[:,1:], reduction='mean')+\
         #       laplacian_aleatoric_uncertainty_loss(size3d_input[:,0:1], size3d_target[:,0:1], input['h3d_log_variance'][input['train_tag']])
         # compute heading loss
+        '''
         heading_loss,grouploss = compute_heading_loss(input['heading'][input['train_tag']] ,
                                             target[mask_type],
                                             target['group'],
                                             target['theta_ray'],  ## NOTE
                                             target['heading_bin'],
                                             target['heading_res'])
-        loss = depth_loss + offset3d_loss + size3d_loss + heading_loss + grouploss
+        '''
+        # loss = depth_loss + offset3d_loss + size3d_loss + heading_loss + grouploss
+        loss = depth_loss + offset3d_loss + size3d_loss 
+        
         
         self.stat['depth_loss'] = depth_loss
         self.stat['offset3d_loss'] = offset3d_loss
         self.stat['size3d_loss'] = size3d_loss
-        self.stat['heading_loss'] = heading_loss
-        self.stat['group_loss'] = grouploss
+        # self.stat['heading_loss'] = heading_loss
+        # self.stat['group_loss'] = grouploss
         
         
         return loss
@@ -157,7 +168,7 @@ def extract_target_from_tensor(target, mask):
     return target[mask]
 
 #compute heading loss two stage style  
-
+'''
 def compute_heading_loss(input, mask, group,theta_ray,target_cls, target_reg):
     mask = mask.view(-1)   # B * K  ---> (B*K)
     target_cls = target_cls.view(-1)  # B * K * 1  ---> (B*K)
@@ -183,8 +194,8 @@ def compute_heading_loss(input, mask, group,theta_ray,target_cls, target_reg):
     regress_ry=theta_ray+regress_alpha
     grouploss=group_loss(regress_ry,gt_ry,group_mask)
     return cls_loss + reg_loss , grouploss
-
-def group_loss(input_angle,target_angle,targert_group):
+'''
+def compute_group_loss(input_angle,target_angle,targert_group):
     group_target=targert_group.detach()
     unique_target=torch.unique(group_target)#targert_group中不重複的數字並組成一個新的tensor list並遍歷
     grouploss=0
@@ -194,15 +205,15 @@ def group_loss(input_angle,target_angle,targert_group):
         if len(index)==1:
             continue
         value_tensor_list=torch.index_select(input_angle,dim=0,index=index)
+        # gt_tensor_list=torch.index_select(target_angle,dim=0,index=index)
+        # value_tensor_list=torch.abs(value_tensor_list-gt_tensor_list)
         value_tensor_list=value_tensor_list.float()
         dev=torch.std(value_tensor_list) #caculate each groups stanrd varience
         grouploss+=(dev*len(value_tensor_list))#group loss在越多的集體weight 越大
     grouploss/=len(group_target)
     return grouploss
-'''    
 
-
-def compute_heading_loss(input, ind, mask, target_cls, target_reg):
+def compute_heading_loss(input, ind, mask, target_cls, target_reg,targert_theta_ray,targert_group):
     """
     Args:
         input: features, shaped in B * C * H * W
@@ -218,6 +229,11 @@ def compute_heading_loss(input, ind, mask, target_cls, target_reg):
     target_cls = target_cls.view(-1)  # B * K * 1  ---> (B*K)
     target_reg = target_reg.view(-1)  # B * K * 1  ---> (B*K)
 
+    group=targert_group.view(-1)
+    group=group[mask]
+    theta_ray=targert_theta_ray.view(-1)
+    theta_ray=theta_ray[mask]
+
     # classification loss
     input_cls = input[:, 0:12]
     input_cls, target_cls = input_cls[mask], target_cls[mask]
@@ -230,8 +246,18 @@ def compute_heading_loss(input, ind, mask, target_cls, target_reg):
     input_reg = torch.sum(input_reg * cls_onehot, 1)
     reg_loss = F.l1_loss(input_reg, target_reg, reduction='mean')
     
-    return cls_loss + reg_loss
-'''
+
+    '''
+    for group loss preprocess
+    '''
+    regress_alpha=myclass2angle(torch.argmax(input_cls,dim=1), input_reg)
+    gt_alpha=myclass2angle(target_cls,target_reg)
+    regress_ry=regress_alpha+theta_ray
+    gt_ry=gt_alpha+theta_ray
+
+    grouploss=compute_group_loss(regress_ry, gt_ry, group)
+    return cls_loss+reg_loss,grouploss
+
 
 
 if __name__ == '__main__':

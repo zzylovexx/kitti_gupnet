@@ -60,7 +60,7 @@ class Tester(object):
         self.save_results(results)
         progress_bar.close()
 
-    def save_results(self, results, output_dir='./outputsgroup2'):
+    def save_results(self, results, output_dir='./heading_before'):
         output_dir = os.path.join(output_dir, 'data')
         os.makedirs(output_dir, exist_ok=True)
         for img_id in results.keys():

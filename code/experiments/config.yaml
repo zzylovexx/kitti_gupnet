@@ -29,13 +29,13 @@ lr_scheduler:
   decay_list: [90, 120]
 
 trainer:
-  max_epoch: 140
+  max_epoch: 200
   eval_frequency: 10 # evaluation interval (in epoch)
-  save_frequency: 10 # checkpoint save interval (in epoch)
+  save_frequency: 20 # checkpoint save interval (in epoch)
   disp_frequency: 5 # display interval (in batch)
   log_dir: 'log'
   #resume_model: '...'  
-tester:
+tester: 
   threshold: 0.2  # confidence filter
-  # resume_model: 'log/checkpoints/checkpoint_epoch_140.pth'
+  resume_model: 'log/heading_before_ckpt/checkpoint_epoch_200.pth'
   

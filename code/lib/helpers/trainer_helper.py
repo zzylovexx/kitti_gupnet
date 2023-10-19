@@ -68,7 +68,7 @@ class Trainer(object):
             self.logger.info(log_str)                     
             ei_loss = self.train_one_epoch(loss_weights)
 
-            self.writer.add_scalar('loss/total_loss',ei_loss['total_loss'].item(),epoch)
+            # self.writer.add_scalar('loss/total_loss',ei_loss['total_loss'].item(),epoch)
             self.writer.add_scalar('loss/seg_loss',ei_loss['seg_loss'].item(),epoch)
             self.writer.add_scalar('loss/offset2d_loss',ei_loss['offset2d_loss'].item(),epoch)
             self.writer.add_scalar('loss/size_loss',ei_loss['size2d_loss'].item(),epoch)
@@ -92,8 +92,8 @@ class Trainer(object):
 
             # save trained model
             if (self.epoch % self.cfg_train['save_frequency']) == 0:
-                os.makedirs(self.cfg_train['log_dir']+'/checkpointsgroup1', exist_ok=True)
-                ckpt_name = os.path.join(self.cfg_train['log_dir']+'/checkpointsgroup1', 'checkpoint_epoch_%d' % self.epoch)
+                os.makedirs(self.cfg_train['log_dir']+'/heading_before_ckpt', exist_ok=True)
+                ckpt_name = os.path.join(self.cfg_train['log_dir']+'/heading_before_ckpt', 'checkpoint_epoch_%d' % self.epoch)
                 save_checkpoint(get_checkpoint_state(self.model, self.optimizer, self.epoch), ckpt_name, self.logger)
 
         return None
@@ -102,7 +102,7 @@ class Trainer(object):
         self.model.train()
         disp_dict = {}
         progress_bar = tqdm.tqdm(total=len(self.train_loader), leave=True, desc='pre-training loss stat')
-        with torch.no_grad():        
+        with torch.no_grad():
             for batch_idx, (inputs,calibs,coord_ranges, targets, info) in enumerate(self.train_loader):
                 inputs = inputs.to(self.device)
                 calibs = calibs.to(self.device)
@@ -205,7 +205,7 @@ class Trainer(object):
         self.save_results(results)
            
                 
-    def save_results(self, results, output_dir='./outputsgroup1'):
+    def save_results(self, results, output_dir='./heading_before'):
         output_dir = os.path.join(output_dir, 'data')
         os.makedirs(output_dir, exist_ok=True)
 
