@@ -109,8 +109,9 @@ outputs
 outputsgroup1
 runs
 lib/helpers/__pycache__
-code/Dataset
-code/heading_before/
-cdoe/outputsgroup2/data
-code/outputsgroup120/data
-code/KITTI_VIZ_3D/
+Dataset
+heading_before/
+outputsgroup2/data
+outputsgroup120/data
+KITTI_VIZ_3D/
+outputs_dir
