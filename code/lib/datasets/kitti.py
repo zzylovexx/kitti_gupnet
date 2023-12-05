@@ -20,10 +20,13 @@ import pdb
 class KITTI(data.Dataset):
     def __init__(self, root_dir, split, cfg):
         # basic configuration
-        self.num_classes = 3
+        # self.num_classes = 3
+        self.num_classes = 1
         self.max_objs = 50
-        self.class_name = ['Pedestrian', 'Car', 'Cyclist']
-        self.cls2id = {'Pedestrian': 0, 'Car': 1, 'Cyclist': 2}
+        # self.class_name = ['Pedestrian', 'Car', 'Cyclist']
+        self.class_name = ['Car']
+
+        self.cls2id = { 'Car': 0}
         self.resolution = np.array([1280, 384])  # W * H
         self.use_3d_center = cfg['use_3d_center']
         self.writelist = cfg['writelist']
@@ -37,10 +40,10 @@ class KITTI(data.Dataset):
          'Cyclist': np.array([1.76282397,0.59706367,1.73698127])] 
         ''' 
         ##l,w,h
-        self.cls_mean_size = np.array([[1.76255119    ,0.66068622   , 0.84422524   ],
-                                       [1.52563191462 ,1.62856739989, 3.88311640418],
-                                       [1.73698127    ,0.59706367   , 1.76282397   ]])                              
-                              
+        # self.cls_mean_size = np.array([[1.76255119    ,0.66068622   , 0.84422524   ],
+        #                                [1.52563191462 ,1.62856739989, 3.88311640418],
+        #                                [1.73698127    ,0.59706367   , 1.76282397   ]])                              
+        self.cls_mean_size = np.array([[1.52563191462 ,1.62856739989, 3.88311640418 ]])
         # data split loading
         assert split in ['train', 'val', 'trainval', 'test']
         self.split = split
